@@ -39,14 +39,23 @@ If editing manually, ensure these keys are present in your `.entitlements` file:
 <true/>
 ```
 
+## Features
+- **Hybrid Engine**: Seamlessly switch between Tumblr API and Web Scraping.
+- **Resolution Filtering**: Filter images by minimum width. Includes presets (HUD, 4K) and **Custom Resolution** support.
+- **Smart Folder Management**: Select or **create new folders** directly from the download dialog.
+- **Concurrent Downloads**: High-performance downloading with configurable concurrency limits.
+- **Real-time Logs**: Monitor the download process with detailed status updates.
+
+## Setup Instructions
+...
 ### 3. Usage
 1. **Settings**:
    - (Optional) Add your Tumblr API Key in `Settings -> Tumblr API`.
-   - Configure User Agent if needed.
+   - Configure User Agent and maximum concurrent downloads.
 2. **Main Screen**:
-   - Enter `blogname.tumblr.com`.
-   - Select minimum resolution (HUD, 4K).
-   - Click "Select Folder" to choose download destination.
+   - Enter `blogname.tumblr.com` or the full URL.
+   - Select minimum resolution. Choose **Custom** to enter a specific minimum width in pixels.
+   - Click "Select Folder" to choose or **create** the download destination.
    - Click "Start Download".
 
 ## Testing
