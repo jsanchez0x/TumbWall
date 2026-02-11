@@ -1,0 +1,43 @@
+name: TumbWall Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: macos-15
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Resolve Dependencies
+      run: xcodebuild -resolvePackageDependencies -project TumbWall.xcodeproj -scheme TumbWall
+
+    - name: Archive App
+      run: |
+        xcodebuild archive \
+          -project TumbWall.xcodeproj \
+          -scheme TumbWall \
+          -archivePath build/TumbWall.xcarchive \
+          -destination 'platform=macOS' \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
+
+    - name: Package for Release
+      run: |
+        mkdir -p artifacts
+        cp -R build/TumbWall.xcarchive/Products/Applications/TumbWall.app artifacts/
+        cd artifacts && zip -r ../TumbWall-macOS-Silicon.zip TumbWall.app
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: TumbWall-macOS-Silicon.zip
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
