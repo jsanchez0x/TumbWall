@@ -39,6 +39,21 @@ If editing manually, ensure these keys are present in your `.entitlements` file:
 <true/>
 ```
 
+## macOS Security Note (Sequoia & newer)
+
+Since the application is not currently signed with an Apple Developer certificate, macOS will block it from running the first time.
+
+To authorize and open the app:
+1. Open **TumbWall.app**. When the security alert appears, click **OK**.
+2. Go to **System Settings** > **Privacy & Security**.
+3. Scroll down to the **Security** section.
+4. You will see a message: `"TumbWall" was blocked from use because it is not from an identified developer.`
+5. Click **Open Anyway**.
+6. Enter your Mac password (or use Touch ID) if prompted.
+7. Click **Open** one last time in the final confirmation dialog.
+
+After this initial authorization, the app will open normally by double-clicking.
+
 ## Features
 - **Hybrid Engine**: Seamlessly switch between Tumblr API and Web Scraping.
 - **Unlimited Paging**: Automatically fetch all available images from a blog until the end or manual stop.
@@ -49,7 +64,6 @@ If editing manually, ensure these keys are present in your `.entitlements` file:
 - **Real-time Logs**: Monitor the download process with detailed status updates.
 
 ## Setup Instructions
-...
 ### 3. Usage
 1. **Settings**:
    - (Optional) Add your Tumblr API Key in `Settings -> Tumblr API`.
