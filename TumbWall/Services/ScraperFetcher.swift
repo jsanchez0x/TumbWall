@@ -73,7 +73,7 @@ class ScraperFetcher: ImageProviderProtocol {
     }
     
     private func cleanBlogName(_ name: String) -> String {
-        // Removes https://, .tumblr.com/ etc
+        // Removes https://, .tumblr.com/ etc.
         if let url = URL(string: name), let host = url.host {
             return host.replacingOccurrences(of: ".tumblr.com", with: "")
         }

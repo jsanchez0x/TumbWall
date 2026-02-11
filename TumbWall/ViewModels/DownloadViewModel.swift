@@ -17,6 +17,15 @@ enum MinResolution: String, CaseIterable, Identifiable {
         case .custom: return -1 // Handled by ViewModel
         }
     }
+    
+    var height: Int {
+        switch self {
+        case .any: return 0
+        case .hd: return 1080
+        case .u4k: return 2160
+        case .custom: return -1 // Handled by ViewModel
+        }
+    }
 }
 
 @MainActor
@@ -25,6 +34,7 @@ class DownloadViewModel: ObservableObject {
     @Published var blogUrl: String = ""
     @Published var selectedResolution: MinResolution = .hd
     @Published var customWidth: String = ""
+    @Published var customHeight: String = ""
     @Published var destinationURL: URL?
     
     var resolvedWidth: Int {
@@ -32,6 +42,23 @@ class DownloadViewModel: ObservableObject {
             return Int(customWidth) ?? 0
         }
         return selectedResolution.width
+    }
+    
+    var resolvedHeight: Int {
+        if selectedResolution == .custom {
+            return Int(customHeight) ?? 0
+        }
+        return selectedResolution.height
+    }
+    
+    var canStartDownload: Bool {
+        guard !blogUrl.isEmpty, destinationURL != nil else { return false }
+        if selectedResolution == .custom {
+            guard let w = Int(customWidth), let h = Int(customHeight), w > 0, h > 0 else {
+                return false
+            }
+        }
+        return true
     }
     
     // State
@@ -83,46 +110,59 @@ class DownloadViewModel: ObservableObject {
                 let provider = getProvider()
                 log("Starting download with strategy: \(String(describing: type(of: provider)))", type: .info)
                 
-                // Fetch loop (Limit to 5 pages for safety in this demo, or until empty)
-                var allImages: [TumbImage] = []
+                let minWidth = resolvedWidth
+                let minHeight = resolvedHeight
                 
-                for page in 0..<5 {
-                    if !isDownloading { break } // Cancel check
-                    
+                var page = 0
+                var totalQueued = 0
+                
+                // Unlimited pagination: loop through all pages until content is exhausted
+                while isDownloading {
                     log("Fetching page \(page + 1)...", type: .info)
-                    let images = try await provider.fetchImages(for: blogUrl, offset: page * 20)
-                    if images.isEmpty { break }
                     
-                    // Filter
+                    let images: [TumbImage]
+                    do {
+                        images = try await provider.fetchImages(for: blogUrl, offset: page * 20)
+                    } catch let error as AppError where error.errorDescription == AppError.blogNotFound.errorDescription {
+                        // Tumblr returns 404 when no more pages are available (scraper)
+                        log("No more pages available.", type: .info)
+                        break
+                    }
+                    
+                    if images.isEmpty {
+                        log("No more images found. All pages processed.", type: .info)
+                        break
+                    }
+                    
+                    // Filter by minimum resolution (both axes)
                     let filtered = images.filter { image in
-                        // Simple check: if width >= required OR generic checks
-                        // Tumblr API gives distinct sizes. Scraper might be zero.
-                        // If scraper returns 0, we download it to check or assume generic.
-                        // For this demo: if width is known and < required, skip.
-                        if image.width > 0 && image.width < resolvedWidth {
+                        if image.width > 0 && image.width < minWidth {
+                            return false
+                        }
+                        if image.height > 0 && image.height < minHeight {
                             return false
                         }
                         return true
                     }
                     
-                    allImages.append(contentsOf: filtered)
-                    log("Found \(filtered.count) valid images on page \(page + 1).", type: .info)
-                    totalFound += filtered.count
+                    if !filtered.isEmpty {
+                        totalFound += filtered.count
+                        totalQueued += filtered.count
+                        log("Found \(filtered.count) valid images on page \(page + 1). Queuing for download...", type: .info)
+                        
+                        setupDownloadObservers(expectedCount: totalQueued)
+                        downloadManager.startDownload(images: filtered, to: destination, concurrency: settings.maxConcurrentDownloads)
+                    } else {
+                        log("Page \(page + 1): no images matching resolution criteria.", type: .info)
+                    }
+                    
+                    page += 1
                 }
                 
-                if allImages.isEmpty {
-                    log("No images found matching criteria.", type: .warning)
+                if totalQueued == 0 {
+                    log("No images found matching criteria across all pages.", type: .warning)
                     isDownloading = false
-                    return
                 }
-                
-                log("Queueing \(allImages.count) images for download...", type: .info)
-                
-                // Start Downloads
-                // We observe the manager via Combine
-                setupDownloadObservers(expectedCount: allImages.count)
-                
-                downloadManager.startDownload(images: allImages, to: destination, concurrency: settings.maxConcurrentDownloads)
                 
             } catch {
                 log("Error: \(error.localizedDescription)", type: .error)
@@ -148,6 +188,9 @@ class DownloadViewModel: ObservableObject {
     }
     
     private func setupDownloadObservers(expectedCount: Int) {
+        // Cancel previous observers to avoid duplicates
+        subscribers.removeAll()
+        
         // Observe completion
         downloadManager.completionSubject
             .receive(on: RunLoop.main)
@@ -158,7 +201,6 @@ class DownloadViewModel: ObservableObject {
                     self.log("Failed: \(error.localizedDescription)", type: .error)
                 } else {
                     self.totalDownloaded += 1
-                    // self.log("Downloaded: \(url?.lastPathComponent ?? "image")", type: .success)
                 }
                 
                 self.updateProgress(expected: expectedCount)
@@ -168,15 +210,16 @@ class DownloadViewModel: ObservableObject {
     
     private func updateProgress(expected: Int) {
         let completed = totalDownloaded + totalFailed
-        progress = Double(completed) / Double(expected)
+        if expected > 0 {
+            progress = Double(completed) / Double(expected)
+        }
         
-        if completed >= expected {
-            isDownloading = false
-            log("Detailed download complete. \(totalDownloaded) success, \(totalFailed) failed.", type: .success)
+        if completed >= expected && !isDownloading {
+            log("Download complete. \(totalDownloaded) success, \(totalFailed) failed.", type: .success)
             statusMessage = "Complete"
-            subscribers.removeAll() // Stop listening
+            subscribers.removeAll()
         } else {
-            statusMessage = "Downloading \(completed)/\(expected)..."
+            statusMessage = "Downloaded \(totalDownloaded), failed \(totalFailed) of \(totalFound) found..."
         }
     }
     

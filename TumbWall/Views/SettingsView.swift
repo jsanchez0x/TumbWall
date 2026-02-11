@@ -13,46 +13,142 @@ struct SettingsView: View {
     ]
     
     var body: some View {
-        Form {
-            Section(header: Text("Tumblr API")) {
-                SecureField("API Key", text: $apiKey)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                
-                Text("Required for API mode. Leave empty to use Scraper.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Section(header: Text("Download Engine")) {
-                Toggle("Force Scraping", isOn: $forceScraping)
-                    .toggleStyle(SwitchToggleStyle())
-                
-                Text("If enabled, scraping will be used even if an API Key is present.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Section(header: Text("Network")) {
-                VStack(alignment: .leading) {
-                    Text("User Agent")
-                    Picker("", selection: $userAgent) {
-                        ForEach(presetUserAgents, id: \.self) { agent in
-                            Text(shortName(for: agent)).tag(agent)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // MARK: - Tumblr API Section
+                settingsSection(
+                    icon: "key.fill",
+                    title: "Tumblr API",
+                    iconColor: .orange
+                ) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("API Key")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            SecureField("Enter your Tumblr API key", text: $apiKey)
+                                .textFieldStyle(.roundedBorder)
                         }
-                        Text("Custom").tag(userAgent) // Simple hack to show current if custom
+                        
+                        Text("Required for API mode. Leave empty to use the Scraper engine.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
-                    .labelsHidden()
-                    
-                    TextField("Custom User Agent", text: $userAgent)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
                 }
                 
-                Stepper("Max Concurrent Downloads: \(maxConcurrentDownloads)", value: $maxConcurrentDownloads, in: 1...10)
+                // MARK: - Download Engine Section
+                settingsSection(
+                    icon: "gear.badge",
+                    title: "Download Engine",
+                    iconColor: .blue
+                ) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Force Scraping")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text("Use scraping even if an API Key is configured.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $forceScraping)
+                                .toggleStyle(.switch)
+                                .labelsHidden()
+                        }
+                    }
+                }
+                
+                // MARK: - Network Section
+                settingsSection(
+                    icon: "network",
+                    title: "Network",
+                    iconColor: .green
+                ) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("User Agent")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Picker("", selection: $userAgent) {
+                                ForEach(presetUserAgents, id: \.self) { agent in
+                                    Text(shortName(for: agent)).tag(agent)
+                                }
+                                Text("Custom").tag(userAgent)
+                            }
+                            .labelsHidden()
+                        }
+                        
+                        Divider()
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Custom User Agent")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            TextField("Enter custom User Agent string", text: $userAgent)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Divider()
+                        
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Max Concurrent Downloads")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text("Number of simultaneous download connections.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Stepper("\(maxConcurrentDownloads)", value: $maxConcurrentDownloads, in: 1...10)
+                                .frame(width: 100)
+                        }
+                    }
+                }
             }
+            .padding(24)
         }
-        .padding()
-        .padding()
-        .frame(width: 500, height: 450)
+        .background(Color(NSColor.windowBackgroundColor))
+        .frame(width: 520, height: 500)
+    }
+    
+    // MARK: - Section Builder
+    
+    @ViewBuilder
+    private func settingsSection<Content: View>(
+        icon: String,
+        title: String,
+        iconColor: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Section Header
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundColor(iconColor)
+                    .frame(width: 24)
+                
+                Text(title)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+            }
+            
+            // Section Content Card
+            VStack(alignment: .leading, spacing: 0) {
+                content()
+                    .padding(16)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+            )
+        }
     }
     
     private func shortName(for agent: String) -> String {

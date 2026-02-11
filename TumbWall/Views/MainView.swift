@@ -23,8 +23,16 @@ struct MainView: View {
                     }
                     
                     if viewModel.selectedResolution == .custom {
-                        TextField("Min Width (px)", text: $viewModel.customWidth)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        HStack(spacing: 12) {
+                            TextField("Min Width (px)", text: $viewModel.customWidth)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                            
+                            Text("×")
+                                .foregroundColor(.secondary)
+                            
+                            TextField("Min Height (px)", text: $viewModel.customHeight)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
                     }
                     
                     HStack {
@@ -58,13 +66,18 @@ struct MainView: View {
                         }
                     }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(viewModel.blogUrl.isEmpty || viewModel.destinationURL == nil)
+                    .disabled(!viewModel.canStartDownload)
                 }
             }
             
             if viewModel.isDownloading || viewModel.progress > 0 {
                 VStack(alignment: .leading) {
-                    ProgressView(value: viewModel.progress)
+                    if viewModel.isDownloading && viewModel.progress == 0 {
+                        ProgressView()
+                            .progressViewStyle(.linear)
+                    } else {
+                        ProgressView(value: viewModel.progress)
+                    }
                     Text(viewModel.statusMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)

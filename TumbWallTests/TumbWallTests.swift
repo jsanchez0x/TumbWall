@@ -108,6 +108,12 @@ final class TumbWallTests: XCTestCase {
         XCTAssertEqual(MinResolution.u4k.width, 3840)
         XCTAssertEqual(MinResolution.any.width, 0)
         XCTAssertEqual(MinResolution.custom.width, -1)
+        
+        // Heights
+        XCTAssertEqual(MinResolution.hd.height, 1080)
+        XCTAssertEqual(MinResolution.u4k.height, 2160)
+        XCTAssertEqual(MinResolution.any.height, 0)
+        XCTAssertEqual(MinResolution.custom.height, -1)
     }
 
     func testCustomResolutionParsing() async {
@@ -117,23 +123,49 @@ final class TumbWallTests: XCTestCase {
             
             // Test 1: Default resolution
             let defaultWidth = viewModel.resolvedWidth
-            XCTAssertEqual(defaultWidth, 1920, "Default should be HD (1920)")
+            let defaultHeight = viewModel.resolvedHeight
+            XCTAssertEqual(defaultWidth, 1920, "Default should be HD width (1920)")
+            XCTAssertEqual(defaultHeight, 1080, "Default should be HD height (1080)")
             
             // Test 2: Custom with valid input
             viewModel.selectedResolution = .custom
             viewModel.customWidth = "500"
-            let customValid = viewModel.resolvedWidth
-            XCTAssertEqual(customValid, 500, "Custom width 500 should resolve to 500")
+            viewModel.customHeight = "300"
+            let customValidW = viewModel.resolvedWidth
+            let customValidH = viewModel.resolvedHeight
+            XCTAssertEqual(customValidW, 500, "Custom width 500 should resolve to 500")
+            XCTAssertEqual(customValidH, 300, "Custom height 300 should resolve to 300")
             
             // Test 3: Custom with invalid input
             viewModel.customWidth = "abc"
-            let customInvalid = viewModel.resolvedWidth
-            XCTAssertEqual(customInvalid, 0, "Invalid input should resolve to 0")
+            viewModel.customHeight = "xyz"
+            let customInvalidW = viewModel.resolvedWidth
+            let customInvalidH = viewModel.resolvedHeight
+            XCTAssertEqual(customInvalidW, 0, "Invalid width input should resolve to 0")
+            XCTAssertEqual(customInvalidH, 0, "Invalid height input should resolve to 0")
             
             // Test 4: Custom with empty input
             viewModel.customWidth = ""
-            let customEmpty = viewModel.resolvedWidth
-            XCTAssertEqual(customEmpty, 0, "Empty input should resolve to 0")
+            viewModel.customHeight = ""
+            let customEmptyW = viewModel.resolvedWidth
+            let customEmptyH = viewModel.resolvedHeight
+            XCTAssertEqual(customEmptyW, 0, "Empty width input should resolve to 0")
+            XCTAssertEqual(customEmptyH, 0, "Empty height input should resolve to 0")
+            
+            // Test 5: canStartDownload validation
+            viewModel.blogUrl = "test"
+            viewModel.destinationURL = URL(fileURLWithPath: "/tmp")
+            viewModel.selectedResolution = .hd
+            XCTAssertTrue(viewModel.canStartDownload, "Should be ready with HD preset")
+            
+            viewModel.selectedResolution = .custom
+            viewModel.customWidth = ""
+            viewModel.customHeight = ""
+            XCTAssertFalse(viewModel.canStartDownload, "Should not be ready with empty custom values")
+            
+            viewModel.customWidth = "100"
+            viewModel.customHeight = "200"
+            XCTAssertTrue(viewModel.canStartDownload, "Should be ready with valid custom values")
             
             return true
         }

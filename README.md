@@ -41,9 +41,11 @@ If editing manually, ensure these keys are present in your `.entitlements` file:
 
 ## Features
 - **Hybrid Engine**: Seamlessly switch between Tumblr API and Web Scraping.
-- **Resolution Filtering**: Filter images by minimum width. Includes presets (HUD, 4K) and **Custom Resolution** support.
+- **Unlimited Paging**: Automatically fetch all available images from a blog until the end or manual stop.
+- **Resolution Filtering**: Filter images by minimum width and height. Includes presets (HD, 4K) and **Custom Resolution** support for specific dimensions.
 - **Smart Folder Management**: Select or **create new folders** directly from the download dialog.
 - **Concurrent Downloads**: High-performance downloading with configurable concurrency limits.
+- **macOS System Settings Style**: Polished and modern settings interface that feels native to macOS.
 - **Real-time Logs**: Monitor the download process with detailed status updates.
 
 ## Setup Instructions
@@ -51,12 +53,12 @@ If editing manually, ensure these keys are present in your `.entitlements` file:
 ### 3. Usage
 1. **Settings**:
    - (Optional) Add your Tumblr API Key in `Settings -> Tumblr API`.
-   - Configure User Agent and maximum concurrent downloads.
+   - Configure User Agent and maximum concurrent downloads in the native-style settings view.
 2. **Main Screen**:
    - Enter `blogname.tumblr.com` or the full URL.
-   - Select minimum resolution. Choose **Custom** to enter a specific minimum width in pixels.
+   - Select minimum resolution. Choose **Custom** to enter specific **minimum width and height** in pixels.
    - Click "Select Folder" to choose or **create** the download destination.
-   - Click "Start Download".
+   - Click "Start Download" (The button will be enabled once a valid URL and folder are provided).
 
 ## Testing
 Run the Test scheme (`Cmd+U`) to verify networking logic and configuration persistence.
