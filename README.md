@@ -32,7 +32,7 @@ TumbWall allows archivists and designers to efficiently download high-quality vi
 *   **Modern Interface**: Designed with SwiftUI, following macOS style guidelines.
 *   **Concurrency**: Configurable simultaneous downloads to maximize bandwidth.
 
-![TumbWall Screenshot](docs/assets/tumbwall-screenshot.png)
+![TumbWall Screenshot](docs/assets/tumbwall-screenshot.jpg)
 
 ---
 
