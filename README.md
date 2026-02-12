@@ -1,5 +1,7 @@
 # TumbWall
 
+![TumbWall Icon](docs/assets/icon.png)
+
 TumbWall is a native macOS application designed to massively download images from Tumblr blogs, featuring advanced improved resolution filtering options.
 
 ## Table of Contents
