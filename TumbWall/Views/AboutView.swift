@@ -12,7 +12,7 @@ struct AboutView: View {
                     .font(.largeTitle)
                     .fontWeight(.bold)
                 
-                Text("Version 1.1")
+                Text("Version 1.1 (3)")
                     .font(.headline)
                     .foregroundColor(.secondary)
             }
