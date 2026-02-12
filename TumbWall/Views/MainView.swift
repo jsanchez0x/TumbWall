@@ -2,118 +2,221 @@ import SwiftUI
 
 struct MainView: View {
     @StateObject private var viewModel = DownloadViewModel()
+    @State private var sidebarSelection: SidebarItem? = .download
+    
+    enum SidebarItem: Int, CaseIterable, Identifiable {
+        case download
+        case settings
+        case about
+        
+        var id: Int { rawValue }
+        
+        var title: String {
+            switch self {
+            case .download: return "Download"
+            case .settings: return "Settings"
+            case .about: return "About"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .download: return "arrow.down.circle"
+            case .settings: return "gear"
+            case .about: return "info.circle"
+            }
+        }
+    }
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            Text("TumbWall Downloader")
-                .font(.largeTitle)
-                .padding(.top)
-            
-            // Inputs
-            Form {
-                Section(header: Text("Configuration")) {
-                    TextField("Blog Name or URL (e.g. nasa.tumblr.com)", text: $viewModel.blogUrl)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    Picker("Min Resolution", selection: $viewModel.selectedResolution) {
-                        ForEach(MinResolution.allCases) { res in
-                            Text(res.rawValue).tag(res)
-                        }
-                    }
-                    
-                    if viewModel.selectedResolution == .custom {
-                        HStack(spacing: 12) {
-                            TextField("Min Width (px)", text: $viewModel.customWidth)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                            
-                            Text("×")
-                                .foregroundColor(.secondary)
-                            
-                            TextField("Min Height (px)", text: $viewModel.customHeight)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                        }
-                    }
-                    
-                    HStack {
-                        Text(viewModel.destinationURL?.path ?? "No folder selected")
-                            .truncationMode(.middle)
-                            .foregroundColor(.secondary)
-                        
-                        Spacer()
-                        
-                        Button("Select Folder") {
-                            selectFolder()
+        NavigationView {
+            List(selection: $sidebarSelection) {
+                Section("TumbWall") {
+                    ForEach(SidebarItem.allCases) { item in
+                        NavigationLink(destination: view(for: item), tag: item, selection: $sidebarSelection) {
+                            Label(item.title, systemImage: item.icon)
                         }
                     }
                 }
             }
-            .padding()
+            .listStyle(SidebarListStyle())
+            .frame(minWidth: 200)
             
-            // Actions & Progress
-            HStack {
+            // Default View
+            view(for: .download)
+        }
+        .frame(minWidth: 800, minHeight: 600)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
                 if viewModel.isDownloading {
-                    Button("Stop Download") {
-                        viewModel.stopDownload()
+                    ProgressView()
+                        .scaleEffect(0.7)
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func view(for item: SidebarItem?) -> some View {
+        switch item {
+        case .download, nil:
+            DownloadView(viewModel: viewModel)
+        case .settings:
+            SettingsView()
+        case .about:
+            Text("TumbWall v1.0\nCreated by Antigravity")
+                .multilineTextAlignment(.center)
+                .font(.title2)
+                .foregroundColor(.secondary)
+        }
+    }
+}
+
+// MARK: - Download View Content
+struct DownloadView: View {
+    @ObservedObject var viewModel: DownloadViewModel
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header / Configuration Area
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    
+                    Text("New Download")
+                        .font(.title)
+                        .fontWeight(.semibold)
+                    
+                    GroupBox(label: Label("Source", systemImage: "network")) {
+                        VStack(alignment: .leading) {
+                            TextField("Tumblr Blog URL (e.g., nasa.tumblr.com)", text: $viewModel.blogUrl)
+                                .textFieldStyle(.roundedBorder)
+                            
+                            Text("The crawler will scan for pages automatically.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(5)
+                    }
+                    
+                    GroupBox(label: Label("Criteria", systemImage: "slider.horizontal.3")) {
+                        HStack(alignment: .top, spacing: 20) {
+                            VStack(alignment: .leading) {
+                                Text("Min Resolution")
+                                    .font(.subheadline)
+                                Picker("", selection: $viewModel.selectedResolution) {
+                                    ForEach(MinResolution.allCases) { res in
+                                        Text(res.rawValue).tag(res)
+                                    }
+                                }
+                                .labelsHidden()
+                            }
+                            
+                            if viewModel.selectedResolution == .custom {
+                                VStack(alignment: .leading) {
+                                    Text("Dimensions")
+                                        .font(.subheadline)
+                                    HStack {
+                                        TextField("W", text: $viewModel.customWidth)
+                                            .frame(width: 60)
+                                            .textFieldStyle(.roundedBorder)
+                                        Text("x")
+                                        TextField("H", text: $viewModel.customHeight)
+                                            .frame(width: 60)
+                                            .textFieldStyle(.roundedBorder)
+                                        Text("px")
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(5)
+                    }
+                    
+                    GroupBox(label: Label("Destination", systemImage: "folder")) {
+                        HStack {
+                            Image(systemName: "folder.fill")
+                                .foregroundColor(.blue)
+                            Text(viewModel.destinationURL?.path ?? "Select a folder...")
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .foregroundColor(viewModel.destinationURL == nil ? .secondary : .primary)
+                            
+                            Spacer()
+                            
+                            Button("Browse...") {
+                                selectFolder()
+                            }
+                        }
+                        .padding(5)
+                    }
+                }
+                .padding()
+            }
+            .frame(maxWidth: .infinity)
+            
+            Divider()
+            
+            // Console / Logs Area
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("Activity Log")
+                        .font(.headline)
+                    Spacer()
+                    if viewModel.isDownloading {
+                        Text(viewModel.statusMessage)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 10)
+                .padding(.bottom, 5)
+                
+                LogConsoleView(logs: viewModel.logs)
+                    .background(Color(NSColor.textBackgroundColor))
+            }
+            .frame(height: 250)
+            .background(Color(NSColor.windowBackgroundColor))
+            
+            Divider()
+            
+            // Footer Action
+            HStack {
+                VStack(alignment: .leading) {
+                    if viewModel.isDownloading || viewModel.progress > 0 {
+                        ProgressView(value: viewModel.progress)
+                            .progressViewStyle(.linear)
+                            .frame(maxWidth: 200)
+                    }
+                }
+                
+                Spacer()
+                
+                if viewModel.isDownloading {
+                    Button(action: { viewModel.stopDownload() }) {
+                        Label("Stop", systemImage: "stop.circle.fill")
                     }
                     .keyboardShortcut(".", modifiers: .command)
                 } else {
-                    Button("Start Download") {
+                    Button(action: {
                         if viewModel.destinationURL == nil {
                             selectFolder()
                         } else {
                             viewModel.startDownload()
                         }
+                    }) {
+                        Label("Start Download", systemImage: "arrow.down.circle.fill")
+                            .font(.system(size: 14, weight: .semibold))
                     }
-                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
                     .disabled(!viewModel.canStartDownload)
+                    .keyboardShortcut(.defaultAction)
                 }
-            }
-            
-            if viewModel.isDownloading || viewModel.progress > 0 {
-                VStack(alignment: .leading) {
-                    if viewModel.isDownloading && viewModel.progress == 0 {
-                        ProgressView()
-                            .progressViewStyle(.linear)
-                    } else {
-                        ProgressView(value: viewModel.progress)
-                    }
-                    Text(viewModel.statusMessage)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal)
-            }
-            
-            // Logs Console
-            VStack(alignment: .leading) {
-                Text("Logs")
-                    .font(.headline)
-                
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(viewModel.logs) { log in
-                            HStack {
-                                Text(dateFormatter.string(from: log.timestamp))
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                                
-                                Text(log.message)
-                                    .font(.caption)
-                                    .foregroundColor(color(for: log.type))
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(height: 150)
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(8)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.3)))
             }
             .padding()
+            .background(Material.bar)
         }
-        .frame(minWidth: 500, minHeight: 600)
     }
     
     private func selectFolder() {
@@ -125,6 +228,39 @@ struct MainView: View {
         
         if panel.runModal() == .OK {
             viewModel.destinationURL = panel.url
+        }
+    }
+}
+
+struct LogConsoleView: View {
+    let logs: [DownloadViewModel.LogEntry]
+    
+    var body: some View {
+        ScrollViewReader { proxy in
+            List {
+                ForEach(logs) { log in
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(dateFormatter.string(from: log.timestamp))
+                            .font(.caption2.monospacedDigit())
+                            .foregroundColor(.secondary)
+                            .frame(width: 60, alignment: .leading)
+                        
+                        Text(log.message)
+                            .font(.caption)
+                            .foregroundColor(color(for: log.type))
+                            .textSelection(.enabled)
+                    }
+                    .listRowInsets(EdgeInsets(top: 2, leading: 10, bottom: 2, trailing: 10))
+                }
+            }
+            .listStyle(.plain)
+            .onChange(of: logs.count) { _ in
+                if let first = logs.first {
+                    withAnimation {
+                        proxy.scrollTo(first.id, anchor: .top)
+                    }
+                }
+            }
         }
     }
     
@@ -139,7 +275,7 @@ struct MainView: View {
     
     private var dateFormatter: DateFormatter {
         let f = DateFormatter()
-        f.timeStyle = .medium
+        f.dateFormat = "HH:mm:ss"
         return f
     }
 }

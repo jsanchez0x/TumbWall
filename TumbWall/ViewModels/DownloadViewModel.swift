@@ -134,15 +134,9 @@ class DownloadViewModel: ObservableObject {
                         break
                     }
                     
-                    // Filter by minimum resolution (both axes)
+                    // Filter by format only (resolution checked post-download)
                     let filtered = images.filter { image in
-                        if image.width > 0 && image.width < minWidth {
-                            return false
-                        }
-                        if image.height > 0 && image.height < minHeight {
-                            return false
-                        }
-                        return true
+                        return DownloadViewModel.shouldDownload(image: image, minWidth: minWidth, minHeight: minHeight)
                     }
                     
                     if !filtered.isEmpty {
@@ -194,18 +188,68 @@ class DownloadViewModel: ObservableObject {
         // Observe completion
         downloadManager.completionSubject
             .receive(on: RunLoop.main)
-            .sink { [weak self] (imageId, url, error) in
+            .sink { [weak self] (image, url, error) in
                 guard let self = self else { return }
+                
                 if let error = error {
                     self.totalFailed += 1
                     self.log("Failed: \(error.localizedDescription)", type: .error)
-                } else {
-                    self.totalDownloaded += 1
+                } else if let url = url {
+                    // Post-Download Validation
+                    if self.validateAndKeepImage(at: url, originalImage: image) {
+                        self.totalDownloaded += 1
+                        self.log("Saved: \(url.lastPathComponent)", type: .success)
+                    } else {
+                        self.totalFailed += 1 // Count as failed/rejected
+                        // Log handled in validateAndKeepImage
+                    }
                 }
                 
                 self.updateProgress(expected: expectedCount)
             }
             .store(in: &subscribers)
+    }
+    
+    private func validateAndKeepImage(at url: URL, originalImage: TumbImage) -> Bool {
+        let minW = resolvedWidth
+        let minH = resolvedHeight
+        
+        self.log("Validation: Checking [\(originalImage.url)] -> [\(url.lastPathComponent)]...", type: .info)
+        
+        // If Any resolution, accept everything
+        if minW == 0 && minH == 0 { return true }
+        
+        // Check dimensions
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            self.log("Validation Failed: Could not read image properties for \(url.lastPathComponent)", type: .warning)
+            try? FileManager.default.removeItem(at: url)
+            return false
+        }
+        
+        let propertiesOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, propertiesOptions) as? [String: Any],
+              let width = properties[kCGImagePropertyPixelWidth as String] as? Int,
+              let height = properties[kCGImagePropertyPixelHeight as String] as? Int else {
+            self.log("Validation Failed: No dimensions found for \(url.lastPathComponent)", type: .warning)
+            try? FileManager.default.removeItem(at: url)
+            return false
+        }
+        
+        let meetsWidth = width >= minW
+        let meetsHeight = height >= minH
+        
+        if meetsWidth && meetsHeight {
+            self.log("Validated: \(width)x\(height) (>= \(minW)x\(minH))", type: .info)
+            return true
+        } else {
+            self.log("Rejected: \(width)x\(height) < \(minW)x\(minH). Deleting...", type: .warning)
+            do {
+                try FileManager.default.removeItem(at: url)
+            } catch {
+                self.log("Error deleting rejected file: \(error.localizedDescription)", type: .error)
+            }
+            return false
+        }
     }
     
     private func updateProgress(expected: Int) {
@@ -227,5 +271,29 @@ class DownloadViewModel: ObservableObject {
         withAnimation {
             logs.insert(LogEntry(message: message, type: type), at: 0)
         }
+    }
+    
+    // MARK: - Filtering Logic
+    static func shouldDownload(image: TumbImage, minWidth: Int, minHeight: Int) -> Bool {
+        // 1. Format Check
+        let validExtensions = ["jpg", "jpeg", "png"]
+        let ext = image.url.pathExtension.lowercased()
+        if !validExtensions.contains(ext) {
+            return false
+        }
+        
+        // 2. Resolution Check
+        // Reformulated: verify ONLY if we have valid dimensions.
+        // If image.width is 0 (unknown), we allow it (optimistic approach) because Scraper often yields 0.
+        // We only reject if we KNOW it's too small.
+        if minWidth > 0 && image.width > 0 {
+            if image.width < minWidth { return false }
+        }
+        
+        if minHeight > 0 && image.height > 0 {
+            if image.height < minHeight { return false }
+        }
+        
+        return true
     }
 }

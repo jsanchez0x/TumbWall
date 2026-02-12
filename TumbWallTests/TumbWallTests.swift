@@ -1,6 +1,7 @@
 import XCTest
 @testable import TumbWall
 
+@MainActor
 final class TumbWallTests: XCTestCase {
     
     override func setUp() {
@@ -171,5 +172,56 @@ final class TumbWallTests: XCTestCase {
         }
         
         XCTAssertTrue(result)
+    }
+
+
+    // MARK: - Filter Logic Tests (Bugfix & New Feature)
+    
+    // Helper to create a dummy image
+    func makeImage(url: String, width: Int, height: Int) -> TumbImage {
+        return TumbImage(id: UUID().uuidString, url: URL(string: url)!, width: width, height: height, postUrl: "http://test.com")
+    }
+
+    func testResolutionFiltering() {
+        // NOTE: Resolution filtering is now Post-Download. 
+        // `shouldDownload` only checks format.
+        // We verify that it returns TRUE for any resolution, as we want to download first.
+        
+        let hdWidth = 1920
+        let hdHeight = 1080
+        
+        // 1. Unknown Resolution (0x0) -> Should be ACCEPTED
+        let unknownImg = makeImage(url: "http://test.com/img.jpg", width: 0, height: 0)
+        XCTAssertTrue(DownloadViewModel.shouldDownload(image: unknownImg, minWidth: 0, minHeight: 0), "Should download 0x0 images for later validation")
+        
+        // 2. Low Resolution -> Should be ACCEPTED (for now)
+        let lowResImg = makeImage(url: "http://test.com/img.jpg", width: 500, height: 500)
+        XCTAssertTrue(DownloadViewModel.shouldDownload(image: lowResImg, minWidth: 0, minHeight: 0), "Should download low res images for later validation")
+        
+        // 3. High Resolution -> Should be ACCEPTED
+        let highResImg = makeImage(url: "http://test.com/img.jpg", width: 2000, height: 2000)
+        XCTAssertTrue(DownloadViewModel.shouldDownload(image: highResImg, minWidth: 0, minHeight: 0), "Should download high res images")
+    }
+    
+    func testFormatFiltering() {
+        // 1. Valid Formats
+        let jpg = makeImage(url: "http://test.com/image.jpg", width: 100, height: 100)
+        let jpeg = makeImage(url: "http://test.com/image.jpeg", width: 100, height: 100)
+        let png = makeImage(url: "http://test.com/image.png", width: 100, height: 100)
+        let JPG = makeImage(url: "http://test.com/image.JPG", width: 100, height: 100)
+        
+        XCTAssertTrue(DownloadViewModel.shouldDownload(image: jpg, minWidth: 0, minHeight: 0), "Should accept jpg")
+        XCTAssertTrue(DownloadViewModel.shouldDownload(image: jpeg, minWidth: 0, minHeight: 0), "Should accept jpeg")
+        XCTAssertTrue(DownloadViewModel.shouldDownload(image: png, minWidth: 0, minHeight: 0), "Should accept png")
+        XCTAssertTrue(DownloadViewModel.shouldDownload(image: JPG, minWidth: 0, minHeight: 0), "Should accept JPG (case insensitive)")
+        
+        // 2. Invalid Formats
+        let gif = makeImage(url: "http://test.com/image.gif", width: 100, height: 100)
+        let webp = makeImage(url: "http://test.com/image.webp", width: 100, height: 100)
+        let noExt = makeImage(url: "http://test.com/image", width: 100, height: 100)
+        
+        XCTAssertFalse(DownloadViewModel.shouldDownload(image: gif, minWidth: 0, minHeight: 0), "Should reject gif")
+        XCTAssertFalse(DownloadViewModel.shouldDownload(image: webp, minWidth: 0, minHeight: 0), "Should reject webp")
+        XCTAssertFalse(DownloadViewModel.shouldDownload(image: noExt, minWidth: 0, minHeight: 0), "Should reject no extension")
     }
 }

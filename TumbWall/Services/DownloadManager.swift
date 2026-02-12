@@ -9,7 +9,7 @@ class DownloadManager: ObservableObject {
     
     // Publish updates to VM
     let progressSubject = PassthroughSubject<(String, Double), Never>()
-    let completionSubject = PassthroughSubject<(String, URL?, Error?), Never>()
+    let completionSubject = PassthroughSubject<(TumbImage, URL?, Error?), Never>()
     
     private init() {
         let configuration = URLSessionConfiguration.default
@@ -28,7 +28,7 @@ class DownloadManager: ObservableObject {
             }
             
             operation.onCompletion = { [weak self] location, error in
-                self?.completionSubject.send((image.id, location, error))
+                self?.completionSubject.send((image, location, error))
             }
             
             operationQueue.addOperation(operation)

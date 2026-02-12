@@ -13,6 +13,21 @@ struct SettingsView: View {
     ]
     
     var body: some View {
+        TabView {
+            generalSettings
+                .tabItem {
+                    Label("General", systemImage: "gear")
+                }
+            
+            AboutView()
+                .tabItem {
+                    Label("About", systemImage: "info.circle")
+                }
+        }
+        .frame(width: 520, height: 500)
+    }
+    
+    private var generalSettings: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 // MARK: - Tumblr API Section
@@ -111,7 +126,6 @@ struct SettingsView: View {
             .padding(24)
         }
         .background(Color(NSColor.windowBackgroundColor))
-        .frame(width: 520, height: 500)
     }
     
     // MARK: - Section Builder

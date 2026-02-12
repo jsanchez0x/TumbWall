@@ -1,81 +1,95 @@
 # TumbWall
 
-## Overview
-TumbWall is a native macOS application for downloading wallpapers from Tumblr blogs. It features a hybrid download engine (API + Scraping), resolution filtering, and concurrent downloads.
+TumbWall is a native macOS application designed to massively download images from Tumblr blogs, featuring advanced improved resolution filtering options.
 
-## Architecture
-- **Language**: Swift 5.9+
-- **UI Framework**: SwiftUI
-- **Pattern**: MVVM + Clean Architecture
-- **Concurrency**: Swift Concurrency (`async/await`) + `OperationQueue` for rate limiting.
+## Table of Contents
 
-## Setup Instructions
+1.  [Overview & Features](#overview--features)
+2.  [User Guide](#user-guide)
+    *   [Installation & Gatekeeper](#installation--gatekeeper)
+    *   [Usage Instructions](#usage-instructions)
+3.  [Developer Guide](#developer-guide)
+    *   [Architecture](#architecture)
+    *   [Dependencies](#dependencies)
+    *   [Permissions & Sandboxing](#permissions--sandboxing)
+4.  [License](#license)
 
-### 1. Dependencies
-This project uses **Swift Package Manager**.
-- **SwiftSoup**: Required for the Scraper strategy.
-  - File > Add Package Dependencies...
-  - URL: `https://github.com/scinfu/SwiftSoup.git`
-  - Version: `2.6.0` or later.
+---
 
-### 2. Permissions & Sandboxing
-To allow the app to download files and access the internet, update your target's **Signing & Capabilities**:
+## Overview & Features
 
-#### App Sandbox
-Ensure the following are checked:
-- **Network**:
-  - [x] Incoming Connections (Server)
-  - [x] Outgoing Connections (Client)
-- **File Access**:
-  - **User Selected File**: Read/Write (Required to save images to the selected folder).
+TumbWall allows archivists and designers to efficiently download high-quality visual content.
 
-#### Info.plist / Entitlements
-If editing manually, ensure these keys are present in your `.entitlements` file:
+### Key Features
 
-```xml
-<key>com.apple.security.network.client</key>
-<true/>
-<key>com.apple.security.files.user-selected.read-write</key>
-<true/>
-```
+*   **Hybrid Download Engine**: Supports both the official Tumblr API and a "Scraper" mode for blogs that don't require an API Key.
+*   **Resolution Filtering**:
+    *   Presets: HD (1920x1080), 4K (3840x2160).
+    *   Custom Resolution: Define your own width and height limits.
+*   **Smart Validation**: Images are validated post-download to ensure they meet size requirements; if not, they are automatically deleted.
+*   **Modern Interface**: Designed with SwiftUI, following macOS style guidelines.
+*   **Concurrency**: Configurable simultaneous downloads to maximize bandwidth.
 
-## macOS Security Note (Sequoia & newer)
+---
 
-Since the application is not currently signed with an Apple Developer certificate, macOS will block it from running the first time.
+## User Guide
 
-To authorize and open the app:
-1. Open **TumbWall.app**. When the security alert appears, click **OK**.
-2. Go to **System Settings** > **Privacy & Security**.
-3. Scroll down to the **Security** section.
-4. You will see a message: `"TumbWall" was blocked from use because it is not from an identified developer.`
-5. Click **Open Anyway**.
-6. Enter your Mac password (or use Touch ID) if prompted.
-7. Click **Open** one last time in the final confirmation dialog.
+### Installation & Gatekeeper
 
-After this initial authorization, the app will open normally by double-clicking.
+Since this application is not signed with an Apple Developer Certificate (it's an open-source project), macOS will block its execution by default. Follow these steps to open it:
 
-## Features
-- **Hybrid Engine**: Seamlessly switch between Tumblr API and Web Scraping.
-- **Unlimited Paging**: Automatically fetch all available images from a blog until the end or manual stop.
-- **Resolution Filtering**: Filter images by minimum width and height. Includes presets (HD, 4K) and **Custom Resolution** support for specific dimensions.
-- **Smart Folder Management**: Select or **create new folders** directly from the download dialog.
-- **Concurrent Downloads**: High-performance downloading with configurable concurrency limits.
-- **macOS System Settings Style**: Polished and modern settings interface that feels native to macOS.
-- **Real-time Logs**: Monitor the download process with detailed status updates.
+1.  Download the latest version from the [Releases](https://github.com/jsanchez0x/TumbWall/releases) section.
+2.  Unzip the `.zip` file and move `TumbWall.app` to your **Applications** folder.
+3.  **First Launch**:
+    *   **Right-click** (or Control + Click) on the app icon.
+    *   Select **Open** from the context menu.
+    *   A warning window will appear. Click **Open** again.
+    *   *Note*: You only need to do this the first time.
 
-## Setup Instructions
-### 3. Usage
-1. **Settings**:
-   - (Optional) Add your Tumblr API Key in `Settings -> Tumblr API`.
-   - Configure User Agent and maximum concurrent downloads in the native-style settings view.
-2. **Main Screen**:
-   - Enter `blogname.tumblr.com` or the full URL.
-   - Select minimum resolution. Choose **Custom** to enter specific **minimum width and height** in pixels.
-   - Click "Select Folder" to choose or **create** the download destination.
-   - Click "Start Download" (The button will be enabled once a valid URL and folder are provided).
+### Usage Instructions
 
-## Testing
-Run the Test scheme (`Cmd+U`) to verify networking logic and configuration persistence.
+1.  **Configuration (Optional)**:
+    *   Go to `TumbWall` > `Settings` (or press `⌘,`).
+    *   Enter your Tumblr **API Key** if you have one. If not, enable "Force Scraping".
+    *   Adjust the number of simultaneous downloads in the "Network" tab.
+2.  **Start Download**:
+    *   Enter the blog URL (e.g., `art.tumblr.com` or `https://art.tumblr.com`).
+    *   Select the destination folder.
+    *   Choose the desired resolution (HD, 4K, or Custom).
+    *   Click "Start Download".
+3.  **Monitoring**:
+    *   The progress bar will indicate advancement.
+    *   The logs panel shows in real-time which files are being validated and saved.
+
+---
+
+## Developer Guide
+
+### Architecture
+
+The project follows an **MVVM (Model-View-ViewModel)** architecture with **Clean Architecture** principles.
+
+*   **Views**: SwiftUI components (`MainView`, `SettingsView`, `AboutView`). They contain no business logic.
+*   **ViewModels**: (`DownloadViewModel`) Manage UI state and coordinate download logic.
+*   **Services**:
+    *   `DownloadManager`: Singleton responsible for the download operation queue (`OperationQueue`).
+    *   `TumblrAPIFetcher` / `ScraperFetcher`: Strategies for obtaining image URLs.
+    *   `SettingsManager`: Persistence management with `UserDefaults`.
+
+### Dependencies
+
+The project uses **Swift Package Manager (SPM)** for dependency management:
+
+*   **SwiftSoup**: Used by `ScraperFetcher` to parse HTML from blogs and extract image URLs when the API is not used.
+
+### Permissions & Sandboxing
+
+TumbWall is configured with **App Sandbox** enabled to comply with macOS security standards.
+
+*   **Network (Client)**: Allows the app to connect to the internet to download images (`com.apple.security.network.client`).
+*   **File Access (User Selected)**: Allows read/write access to folders the user explicitly selects (`com.apple.security.files.user-selected.read-write`).
+
+---
 
 ## License
 
